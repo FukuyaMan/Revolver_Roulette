@@ -8,13 +8,15 @@ const GameContainer = () => {
 
     // Local state for Loading Phase UI
     const [loadingStep, setLoadingStep] = useState<'confirm' | 'swipe'>('confirm');
-    const [progress, setProgress] = useState<number>(0); // 0-100 for "charging" the spin
+    const progressRef = useRef<number>(0); // Ref instead of state since visual is removed
     const [visualRotation, setVisualRotation] = useState<number>(0);
     const [, setIsShakeSupported] = useState<boolean>(false);
 
     // Animation refs
     const isDragging = useRef<boolean>(false);
     const lastTouchPos = useRef<{ x: number, y: number } | null>(null);
+    const lastMoveTime = useRef<number>(0);
+
     const animationFrameRef = useRef<number | null>(null);
     const velocityRef = useRef<number>(0);
     const isSpinningRef = useRef<boolean>(false);
@@ -66,17 +68,13 @@ const GameContainer = () => {
         return () => window.removeEventListener('devicemotion', handleMotion);
     }, [loadingStep]);
 
-    // Spin animation loop
     const updateSpin = () => {
         if (isSpinningRef.current) {
-            // Deceleration phase
             setVisualRotation(prev => prev + velocityRef.current);
-            velocityRef.current *= 0.98; // Decay
+            velocityRef.current *= 0.98;
 
-            // Snap to stop when slow enough
             if (velocityRef.current < 0.5) {
                 isSpinningRef.current = false;
-                // Snap effect could be added here, but for now just stop
                 setTimeout(() => {
                     actions.loadGun();
                 }, 500);
@@ -84,16 +82,18 @@ const GameContainer = () => {
                 animationFrameRef.current = requestAnimationFrame(updateSpin);
             }
         } else if (Math.abs(velocityRef.current) > 0.1 && !isDragging.current) {
-            // Free visual spin from manual swipe (before trigger)
             setVisualRotation(prev => prev + velocityRef.current);
-            velocityRef.current *= 0.95; // Faster decay for non-triggered spin
+            velocityRef.current *= 0.95;
             animationFrameRef.current = requestAnimationFrame(updateSpin);
         }
     };
 
     const startAutoSpin = () => {
         isSpinningRef.current = true;
-        velocityRef.current = 30 + Math.random() * 10; // Initial high velocity
+        // Use current velocity if it's a fast flick, otherwise ensure minimum spin speed
+        const baseSpeed = 30;
+        velocityRef.current = Math.max(Math.abs(velocityRef.current), baseSpeed) + Math.random() * 10;
+
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = requestAnimationFrame(updateSpin);
     };
@@ -101,14 +101,20 @@ const GameContainer = () => {
     const handleMouseDown = () => {
         if (loadingStep === 'swipe' && !isSpinningRef.current) {
             isDragging.current = true;
+            velocityRef.current = 0; // Reset velocity on grab
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         }
     };
 
     const handleMouseUp = () => {
         isDragging.current = false;
-        // Resume slight decay for feel if not fully triggered
-        if (!isSpinningRef.current) {
+
+        const timeSinceLastMove = Date.now() - lastMoveTime.current;
+        const isFlick = timeSinceLastMove < 100 && Math.abs(velocityRef.current) > 5;
+
+        if (isFlick) {
+            startAutoSpin();
+        } else if (!isSpinningRef.current) {
             animationFrameRef.current = requestAnimationFrame(updateSpin);
         }
     };
@@ -123,28 +129,27 @@ const GameContainer = () => {
     const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!isDragging.current || loadingStep !== 'swipe' || isSpinningRef.current) return;
 
+        lastMoveTime.current = Date.now();
         const movement = Math.sqrt(e.movementX ** 2 + e.movementY ** 2);
 
-        // Add to visual rotation directly for 1:1 feel
-        // Direction? Let's assume always positive for simplicity or based on movementX
         const delta = movement * 0.5;
         setVisualRotation(prev => prev + delta);
-        velocityRef.current = delta; // track velocity
+        velocityRef.current = delta;
 
-        // Charge progress
+        // Still keep progress accumulation as a fallback (or for visual feedback if we had a bar)
+        // But flick is now the primary "feel" way to trigger.
         const charge = (movement / 500) * 100 * 1.5;
-        setProgress(prev => {
-            const next = Math.min(prev + charge, 100);
-            if (next >= 100 && prev < 100) {
-                startAutoSpin();
-            }
-            return next;
-        });
+        progressRef.current = Math.min(progressRef.current + charge, 100);
+
+        if (progressRef.current >= 100) {
+            startAutoSpin();
+        }
     };
 
     const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
         if (loadingStep === 'swipe' && !isSpinningRef.current) {
             isDragging.current = true;
+            velocityRef.current = 0;
             const touch = e.touches[0];
             lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -154,6 +159,7 @@ const GameContainer = () => {
     const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
         if (!isDragging.current || loadingStep !== 'swipe' || isSpinningRef.current || !lastTouchPos.current) return;
 
+        lastMoveTime.current = Date.now();
         const touch = e.touches[0];
         const deltaX = touch.clientX - lastTouchPos.current.x;
         const deltaY = touch.clientY - lastTouchPos.current.y;
@@ -166,19 +172,23 @@ const GameContainer = () => {
         velocityRef.current = delta;
 
         const charge = (movement / 500) * 100 * 1.5;
-        setProgress(prev => {
-            const next = Math.min(prev + charge, 100);
-            if (next >= 100 && prev < 100) {
-                startAutoSpin();
-            }
-            return next;
-        });
+        progressRef.current = Math.min(progressRef.current + charge, 100);
+
+        if (progressRef.current >= 100) {
+            startAutoSpin();
+        }
     };
 
     const handleTouchEnd = () => {
         isDragging.current = false;
         lastTouchPos.current = null;
-        if (!isSpinningRef.current) {
+
+        const timeSinceLastMove = Date.now() - lastMoveTime.current;
+        const isFlick = timeSinceLastMove < 100 && Math.abs(velocityRef.current) > 5;
+
+        if (isFlick) {
+            startAutoSpin();
+        } else if (!isSpinningRef.current) {
             animationFrameRef.current = requestAnimationFrame(updateSpin);
         }
     };
@@ -202,7 +212,7 @@ const GameContainer = () => {
 
             <button onClick={() => {
                 setLoadingStep('confirm');
-                setProgress(0);
+                progressRef.current = 0;
                 setVisualRotation(0);
                 isDragging.current = false;
                 actions.goToLoading();
@@ -252,12 +262,7 @@ const GameContainer = () => {
                             additionalRotation={visualRotation}
                         />
 
-                        <div className="progress-bar-bg">
-                            <div
-                                className="progress-bar-fill"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
+
                     </div>
 
                 </div>
@@ -310,13 +315,15 @@ const GameContainer = () => {
             {gameState === GAME_STATES.FIRING && renderFiring()}
             {gameState === GAME_STATES.GAME_OVER && renderGameOver()}
 
-            {/* Debug Info - Remove in production if needed, but useful for verification */}
-            <div className="debug-info">
-                <p>デバッグ情報:</p>
-                <p>現在の状態: {gameState}</p>
-                <p>実弾の位置 (Live Round): {gunState.liveRoundIndex} (プレイヤーには秘密)</p>
-                <p>現在のシリンダー: {gunState.chamberIndex}</p>
-            </div>
+            {/* Debug Info - Only visible in Development */}
+            {import.meta.env.DEV && (
+                <div className="debug-info">
+                    <p>デバッグ情報:</p>
+                    <p>現在の状態: {gameState}</p>
+                    <p>実弾の位置 (Live Round): {gunState.liveRoundIndex} (プレイヤーには秘密)</p>
+                    <p>現在のシリンダー: {gunState.chamberIndex}</p>
+                </div>
+            )}
         </div>
     );
 };

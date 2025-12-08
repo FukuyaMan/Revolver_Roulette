@@ -17,7 +17,7 @@ const Cylinder = ({ currentChamberIndex, gameState, additionalRotation = 0 }: Cy
     const rotation = baseRotation + additionalRotation;
 
     return (
-        <div className="cylinder-wrapper" style={{ position: 'relative', width: '250px', height: '250px', margin: '0 auto' }}>
+        <div className="cylinder-wrapper">
             <div
                 className="cylinder-container"
                 style={{
@@ -63,7 +63,7 @@ const Cylinder = ({ currentChamberIndex, gameState, additionalRotation = 0 }: Cy
                             key={i}
                             className={className}
                             style={{
-                                transform: `rotate(${angle}deg) translate(70px) rotate(${-angle}deg) rotate(${-rotation}deg)`
+                                transform: `rotate(${angle}deg) translate(var(--cylinder-radius, 70px)) rotate(${-angle}deg) rotate(${-rotation}deg)`
                             }}
                         >
                             {content}

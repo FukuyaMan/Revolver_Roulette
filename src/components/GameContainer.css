@@ -4,15 +4,31 @@
     align-items: center;
     /* justify-content: center; Removed to allow phase-container to grow */
     gap: 1rem;
-    padding: 2rem;
+    padding: 1rem;
+    /* Reduced from 2rem */
     border: 1px solid #444;
     border-radius: 12px;
     background-color: #2a2a2a;
-    width: 90vw;
+    width: 100%;
+    /* Use full width of parent (which is constrained by #root padding) */
     max-width: 500px;
     min-height: 650px;
     height: auto;
     margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+    .game-container {
+        padding: 0.75rem;
+        /* Tighter padding on mobile */
+        border-width: 0;
+        /* Optional: simpler border on mobile? Keep for now but maybe thinner */
+        width: 100%;
+        max-width: none;
+        /* Let it fill */
+        border-radius: 8px;
+        /* Slightly smaller radius */
+    }
 }
 
 .status-display {
@@ -51,8 +67,9 @@
 .swipe-area {
     width: 100%;
     max-width: 400px;
-    height: 300px;
-    /* Increased height for cylinder */
+    min-height: 350px;
+    /* Increased to fit larger cylinder */
+    height: auto;
     background-color: transparent;
     /* Transparent to show cylinder clearly */
     /* border: 2px dashed #666; Removed border for cleaner look */
@@ -100,6 +117,10 @@
     font-size: 1.5rem;
     padding: 1rem 2rem;
     border: 2px solid #500000;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    /* iOS specific */
 }
 
 .fire-btn:active {
