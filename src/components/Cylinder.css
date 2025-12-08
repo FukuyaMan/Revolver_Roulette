@@ -1,0 +1,51 @@
+/* Cylinder Visualization */
+.cylinder-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 20px auto;
+    border-radius: 50%;
+    background-color: #222;
+    border: 4px solid #444;
+}
+
+.chamber {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #1a1a1a;
+    border: 2px solid #555;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: #fff;
+    transition: all 0.3s ease;
+
+    /* Center the pivot */
+    top: 50%;
+    left: 50%;
+    margin-top: -30px;
+    /* Half of height */
+    margin-left: -30px;
+    /* Half of width */
+}
+
+.chamber.current {
+    border-color: #ffaa00;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+    background-color: #333;
+}
+
+.chamber.safe {
+    background-color: #004400;
+    border-color: #008800;
+    color: #00cc00;
+}
+
+.chamber.hit {
+    background-color: #440000;
+    border-color: #ff0000;
+    color: #ff0000;
+}

@@ -1,0 +1,123 @@
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* justify-content: center; Removed to allow phase-container to grow */
+    gap: 1rem;
+    padding: 2rem;
+    border: 1px solid #444;
+    border-radius: 12px;
+    background-color: #2a2a2a;
+    width: 90vw;
+    max-width: 500px;
+    min-height: 650px;
+    height: auto;
+    margin: 0 auto;
+}
+
+.status-display {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.feedback {
+    font-weight: bold;
+    color: #ffaa00;
+    min-height: 1.5em;
+}
+
+.phase-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Center content vertically */
+    align-items: center;
+    /* Center content horizontally */
+    gap: 1rem;
+    width: 100%;
+    flex: 1;
+    /* Take up remaining vertical space */
+}
+
+/* Updated Swipe Area Styles */
+.swipe-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+.swipe-area {
+    width: 100%;
+    max-width: 400px;
+    height: 300px;
+    /* Increased height for cylinder */
+    background-color: transparent;
+    /* Transparent to show cylinder clearly */
+    /* border: 2px dashed #666; Removed border for cleaner look */
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.swipe-area:active {
+    background-color: #3a3a3a;
+    border-color: #aaa;
+    cursor: grabbing;
+}
+
+.progress-bar-bg {
+    width: 80%;
+    height: 10px;
+    background-color: #111;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #00cc44;
+    transition: width 0.1s linear;
+}
+
+.instruction-text {
+    color: #888;
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.fire-btn {
+    background-color: #8b0000;
+    color: white;
+    font-size: 1.5rem;
+    padding: 1rem 2rem;
+    border: 2px solid #500000;
+}
+
+.fire-btn:active {
+    background-color: #ff0000;
+    transform: scale(0.95);
+}
+
+.fire-btn:disabled {
+    background-color: #555;
+    border-color: #444;
+}
+
+.debug-info {
+    margin-top: 2rem;
+    font-size: 0.8rem;
+    color: #666;
+    text-align: left;
+    border-top: 1px solid #444;
+    padding-top: 1rem;
+    width: 100%;
+}
