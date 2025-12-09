@@ -20,11 +20,11 @@ export const useHaptics = () => {
                 navigator.vibrate(40);
                 break;
             case 'explosion':
-                navigator.vibrate(500); // Single long vibration
+                navigator.vibrate(2000); // 2 second long vibration
                 break;
             case 'heartbeat':
-                // Single heartbeat pulse (70 BPM = ~857ms interval, pulse length ~100ms)
-                navigator.vibrate(100);
+                // Double heartbeat pulse "dok-dok" (50ms vib, 50ms pause, 50ms vib)
+                navigator.vibrate([50, 50, 50]);
                 break;
         }
     }, []);

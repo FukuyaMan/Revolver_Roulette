@@ -33,11 +33,20 @@ const GameContainer = () => {
     const spinStartRotationRef = useRef<number>(0);
     const spinTargetRotationRef = useRef<number>(0);
     const lastTickRotationRef = useRef<number>(0);
-    const SPIN_DURATION = 1600; // 1.6 seconds
 
-    // Easing: easeOutQuart (Smooth deceleration without bounce)
-    const easeOutQuart = (x: number): number => {
-        return 1 - Math.pow(1 - x, 4);
+    // Tuning States
+    const [spinDuration, setSpinDuration] = useState<number>(1600);
+    const [startSpeed, setStartSpeed] = useState<number>(5.0); // Rotations per second
+    const [endSpeed, setEndSpeed] = useState<number>(0.1); // Rotations per second
+
+    // Velocity Integration
+    const getRotationAtTime = (t: number, totalDuration: number, vStart: number, vEnd: number) => {
+        // v(t) = vStart + (vEnd - vStart) * (t / duration)
+        // rot(t) = ∫ v(t) dt = vStart * t + 0.5 * (vEnd - vStart) * (t^2 / duration)
+        // Note: units are rotations, so multiply by 360 for degrees
+        const term1 = vStart * t;
+        const term2 = 0.5 * (vEnd - vStart) * (Math.pow(t, 2) / totalDuration);
+        return (term1 + term2) * 360;
     };
 
     // Request permission for iOS 13+
@@ -91,10 +100,14 @@ const GameContainer = () => {
     const updateSpin = () => {
         if (isSpinningRef.current) {
             const elapsed = Date.now() - spinStartTimeRef.current;
-            const progress = Math.min(elapsed / SPIN_DURATION, 1);
-            const ease = easeOutQuart(progress);
+            const progress = Math.min(elapsed / spinDuration, 1);
 
-            const newRotation = spinStartRotationRef.current + (spinTargetRotationRef.current - spinStartRotationRef.current) * ease;
+            // Calculate time in seconds for physics formula
+            const t = elapsed / 1000;
+            const durationSec = spinDuration / 1000;
+
+            const deltaRotation = getRotationAtTime(t, durationSec, startSpeed, endSpeed);
+            const newRotation = spinStartRotationRef.current + deltaRotation;
 
             // Trigger tick vibration on slot pass (every 60 degrees)
             if (Math.floor(newRotation / 60) > Math.floor(lastTickRotationRef.current / 60)) {
@@ -107,8 +120,11 @@ const GameContainer = () => {
             if (progress >= 1) {
                 isSpinningRef.current = false;
                 setIsSpinning(false);
-                setVisualRotation(spinTargetRotationRef.current); // Ensure exact snap
-                // stopVibration no longer needed for tick as it's one-shot
+
+                // Final snap calculation based on integration result
+                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, startSpeed, endSpeed);
+                const snappedRot = Math.round(finalRot / 60) * 60;
+                setVisualRotation(snappedRot);
 
                 setTimeout(() => {
                     actions.loadGun();
@@ -128,15 +144,10 @@ const GameContainer = () => {
         isSpinningRef.current = true;
         setIsSpinning(true);
         playSe('rotate');
-        // startVibration('tick', 180); // Removed: angle-based now
 
         spinStartTimeRef.current = Date.now();
         spinStartRotationRef.current = visualRotation;
-
-        // Target: Current + 5 full rotations (1800) + snap
-        const minSpin = 1800;
-        const rawTarget = visualRotation + minSpin;
-        spinTargetRotationRef.current = Math.round(rawTarget / 60) * 60;
+        lastTickRotationRef.current = visualRotation;
 
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = requestAnimationFrame(updateSpin);
@@ -243,7 +254,6 @@ const GameContainer = () => {
     };
 
     // Selection Phase Render
-    // Selection Phase Render
     const renderSelection = () => (
         <div className="phase-container">
             {gunState.isLoaded && (
@@ -266,26 +276,74 @@ const GameContainer = () => {
             </button>
 
             <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.8 }}>
+                <div style={{ marginBottom: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '4px', textAlign: 'left' }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Duration (ms):</label>
+                        <input
+                            type="number"
+                            value={spinDuration}
+                            onChange={(e) => setSpinDuration(Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Start Speed (Rot/sec):</label>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={startSpeed}
+                            onChange={(e) => setStartSpeed(Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>End Speed (Rot/sec):</label>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={endSpeed}
+                            onChange={(e) => setEndSpeed(Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                        />
+                    </div>
+                </div>
+
                 <p style={{ fontSize: '0.8rem', margin: 0 }}>Haptics Test (Android Only)</p>
                 <button
                     onClick={() => {
-                        // Simulate spin with angle-based vibration
-                        let rot = 0;
-                        let vel = 40;
+                        // Simulate spin with velocity integration
+                        playSe('rotate');
+                        const vStart = startSpeed;
+                        const vEnd = endSpeed;
+                        const durationSec = spinDuration / 1000;
+
+                        let startTime = Date.now();
+                        let lastRot = 0;
+
                         const interval = setInterval(() => {
-                            rot += vel;
-                            vel *= 0.98;
-                            if (Math.floor(rot / 60) > Math.floor((rot - vel) / 60)) {
+                            const elapsed = Date.now() - startTime;
+                            const t = elapsed / 1000;
+
+                            // Calculate rotation using integration helper logic
+                            const term1 = vStart * t;
+                            const term2 = 0.5 * (vEnd - vStart) * (Math.pow(t, 2) / durationSec);
+                            const currentRot = (term1 + term2) * 360;
+
+                            if (Math.floor(currentRot / 60) > Math.floor(lastRot / 60)) {
                                 vibrate('tick');
                             }
-                            if (vel < 2) {
+                            lastRot = currentRot;
+
+                            if (elapsed >= spinDuration) {
                                 clearInterval(interval);
                             }
                         }, 16);
                     }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
-                    Test: Spin (1.6s)
+                    Test: Spin
                 </button>
                 <button
                     onMouseDown={() => startVibration('heartbeat', 857)}
@@ -298,7 +356,10 @@ const GameContainer = () => {
                     Test: Heartbeat (Wait)
                 </button>
                 <button
-                    onClick={() => vibrate('explosion')}
+                    onClick={() => {
+                        playSe('bang');
+                        vibrate('explosion');
+                    }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
                     Test: Explosion
