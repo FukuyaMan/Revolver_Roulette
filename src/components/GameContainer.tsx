@@ -256,6 +256,35 @@ const GameContainer = () => {
             }} className="secondary-btn">
                 {gunState.isLoaded ? "再装填 / リセット" : "弾を込める"}
             </button>
+
+            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.8 }}>
+                <p style={{ fontSize: '0.8rem', margin: 0 }}>Haptics Test (Android Only)</p>
+                <button
+                    onClick={() => {
+                        startVibration('tick', 180);
+                        setTimeout(stopVibration, 1600);
+                    }}
+                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
+                >
+                    Test: Spin (1.6s)
+                </button>
+                <button
+                    onMouseDown={() => startVibration('heartbeat', 600)}
+                    onMouseUp={stopVibration}
+                    onMouseLeave={stopVibration}
+                    onTouchStart={() => startVibration('heartbeat', 600)}
+                    onTouchEnd={(e) => { e.preventDefault(); stopVibration(); }}
+                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
+                >
+                    Test: Heartbeat (Hold)
+                </button>
+                <button
+                    onClick={() => vibrate('explosion')}
+                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
+                >
+                    Test: Explosion
+                </button>
+            </div>
         </div>
     );
 
