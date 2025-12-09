@@ -35,9 +35,14 @@ const GameContainer = () => {
     const lastTickRotationRef = useRef<number>(0);
 
     // Tuning States
-    const [spinDuration, setSpinDuration] = useState<number | string>(1600);
-    const [startSpeed, setStartSpeed] = useState<number | string>(5.0); // Rotations per second
-    const [endSpeed, setEndSpeed] = useState<number | string>(0.1); // Rotations per second
+    const [spinDuration] = useState<number>(1750); // Fixed optimal
+    const [startSpeed] = useState<number>(10.0);   // Fixed optimal
+    const [endSpeed] = useState<number>(0.5);      // Fixed optimal
+
+    // Heartbeat & Explosion Tuning
+    const [heartbeatInterval, setHeartbeatInterval] = useState<number | string>(857); // BPM control
+    const [heartbeatGap, setHeartbeatGap] = useState<number | string>(150); // Gap between pulses
+    const [explosionDuration, setExplosionDuration] = useState<number | string>(2000);
 
     // Velocity Integration
     const getRotationAtTime = (t: number, totalDuration: number, vStart: number, vEnd: number) => {
@@ -286,33 +291,31 @@ const GameContainer = () => {
             <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.8 }}>
                 <div style={{ marginBottom: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '4px', textAlign: 'left' }}>
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Duration (ms):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Heartbeat Interval (ms):</label>
                         <input
                             type="number"
-                            value={spinDuration}
-                            onChange={(e) => setSpinDuration(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={heartbeatInterval}
+                            onChange={(e) => setHeartbeatInterval(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
 
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Start Speed (Rot/sec):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Heartbeat Interval Gap (ms):</label>
                         <input
                             type="number"
-                            step="0.1"
-                            value={startSpeed}
-                            onChange={(e) => setStartSpeed(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={heartbeatGap}
+                            onChange={(e) => setHeartbeatGap(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
 
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>End Speed (Rot/sec):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Explosion Duration (ms):</label>
                         <input
                             type="number"
-                            step="0.1"
-                            value={endSpeed}
-                            onChange={(e) => setEndSpeed(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={explosionDuration}
+                            onChange={(e) => setExplosionDuration(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
@@ -356,19 +359,19 @@ const GameContainer = () => {
                     Test: Spin
                 </button>
                 <button
-                    onMouseDown={() => startVibration('heartbeat', 857)}
+                    onMouseDown={() => startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 })}
                     onMouseUp={stopVibration}
                     onMouseLeave={stopVibration}
-                    onTouchStart={() => startVibration('heartbeat', 857)}
+                    onTouchStart={() => startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 })}
                     onTouchEnd={(e) => { e.preventDefault(); stopVibration(); }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
-                    Test: Heartbeat (Wait)
+                    Test: Heartbeat
                 </button>
                 <button
                     onClick={() => {
                         playSe('bang');
-                        vibrate('explosion');
+                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
                     }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
@@ -439,14 +442,14 @@ const GameContainer = () => {
                 onMouseDown={() => {
                     console.log("Hammer cocked...");
                     playSe('hammer');
-                    startVibration('heartbeat', 857); // 70 BPM
+                    startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 });
                 }}
                 onMouseUp={(e) => {
                     e.preventDefault();
                     stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
-                        vibrate('explosion');
+                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
                     } else {
                         playSe('empty');
                     }
@@ -455,14 +458,14 @@ const GameContainer = () => {
                 onTouchStart={() => {
                     console.log("Hammer cocked (touch)...");
                     playSe('hammer');
-                    startVibration('heartbeat', 857); // 70 BPM
+                    startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 });
                 }}
                 onTouchEnd={(e) => {
                     e.preventDefault();
                     stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
-                        vibrate('explosion');
+                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
                     } else {
                         playSe('empty');
                     }

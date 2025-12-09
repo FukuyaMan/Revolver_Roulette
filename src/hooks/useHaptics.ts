@@ -9,7 +9,7 @@ type VibrationPattern =
 export const useHaptics = () => {
     const intervalRef = useRef<number | null>(null);
 
-    const vibrate = useCallback((pattern: VibrationPattern) => {
+    const vibrate = useCallback((pattern: VibrationPattern, options?: { heartbeatGap?: number, explosionDuration?: number }) => {
         if (!navigator.vibrate) return;
 
         switch (pattern) {
@@ -20,16 +20,17 @@ export const useHaptics = () => {
                 navigator.vibrate(40);
                 break;
             case 'explosion':
-                navigator.vibrate(2000); // 2 second long vibration
+                navigator.vibrate(options?.explosionDuration ?? 2000);
                 break;
             case 'heartbeat':
-                // Double heartbeat pulse "dok-dok" (50ms vib, 150ms pause, 50ms vib)
-                navigator.vibrate([50, 150, 50]);
+                // Double heartbeat pulse "dok-dok" (50ms vib, GAP, 50ms vib)
+                const gap = options?.heartbeatGap ?? 150;
+                navigator.vibrate([50, gap, 50]);
                 break;
         }
     }, []);
 
-    const startVibration = useCallback((pattern: VibrationPattern, interval: number) => {
+    const startVibration = useCallback((pattern: VibrationPattern, interval: number, options?: { heartbeatGap?: number, explosionDuration?: number }) => {
         if (!navigator.vibrate) return;
 
         // Clear existing interval if any
@@ -38,11 +39,11 @@ export const useHaptics = () => {
         }
 
         // Play immediately
-        vibrate(pattern);
+        vibrate(pattern, options);
 
         // Loop
         intervalRef.current = window.setInterval(() => {
-            vibrate(pattern);
+            vibrate(pattern, options);
         }, interval);
     }, [vibrate]);
 
