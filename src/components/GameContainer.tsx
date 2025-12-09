@@ -60,7 +60,8 @@ const GameContainer = () => {
 
     // Shake detection
     useEffect(() => {
-        if (loadingStep !== 'swipe' || isSpinningRef.current) return;
+        // Only allow shake in LOADING phase and 'swipe' step
+        if (gameState !== GAME_STATES.LOADING || loadingStep !== 'swipe' || isSpinningRef.current) return;
 
         const handleMotion = (e: DeviceMotionEvent) => {
             if (isSpinningRef.current) return;
@@ -82,7 +83,7 @@ const GameContainer = () => {
 
         window.addEventListener('devicemotion', handleMotion);
         return () => window.removeEventListener('devicemotion', handleMotion);
-    }, [loadingStep]);
+    }, [gameState, loadingStep]);
 
     const updateSpin = () => {
         if (isSpinningRef.current) {

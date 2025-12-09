@@ -25,6 +25,9 @@ body {
     place-items: center;
     min-width: 320px;
     min-height: 100vh;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 #root {
