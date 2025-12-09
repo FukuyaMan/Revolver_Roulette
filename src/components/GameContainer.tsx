@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, MouseEvent, TouchEvent } from 'react';
 import { useRussianRoulette, GAME_STATES } from '../hooks/useRussianRoulette';
 import { playSe } from '../utils/soundUtils';
+import { useHaptics } from '../hooks/useHaptics';
 import Cylinder from './Cylinder';
 import './GameContainer.css';
 
 const GameContainer = () => {
     const { gameState, gunState, actions } = useRussianRoulette();
+    const { vibrate, startVibration, stopVibration } = useHaptics();
 
-    // Local state for Loading Phase UI
+
     const [loadingStep, setLoadingStep] = useState<'confirm' | 'swipe'>('confirm');
     const progressRef = useRef<number>(0); // Ref instead of state since visual is removed
     const [visualRotation, setVisualRotation] = useState<number>(0);
@@ -98,6 +100,7 @@ const GameContainer = () => {
                 isSpinningRef.current = false;
                 setIsSpinning(false);
                 setVisualRotation(spinTargetRotationRef.current); // Ensure exact snap
+                stopVibration(); // Stop ticking
 
                 setTimeout(() => {
                     actions.loadGun();
@@ -117,6 +120,7 @@ const GameContainer = () => {
         isSpinningRef.current = true;
         setIsSpinning(true);
         playSe('rotate');
+        startVibration('tick', 180); // Tick every 180ms during spin
 
         spinStartTimeRef.current = Date.now();
         spinStartRotationRef.current = visualRotation;
@@ -316,11 +320,14 @@ const GameContainer = () => {
                 onMouseDown={() => {
                     console.log("Hammer cocked...");
                     playSe('hammer');
+                    startVibration('heartbeat', 600);
                 }}
                 onMouseUp={(e) => {
                     e.preventDefault();
+                    stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
+                        vibrate('explosion');
                     } else {
                         playSe('empty');
                     }
@@ -329,18 +336,21 @@ const GameContainer = () => {
                 onTouchStart={() => {
                     console.log("Hammer cocked (touch)...");
                     playSe('hammer');
+                    startVibration('heartbeat', 600);
                 }}
                 onTouchEnd={(e) => {
                     e.preventDefault();
+                    stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
+                        vibrate('explosion');
                     } else {
                         playSe('empty');
                     }
                     actions.fire();
                 }}
             >
-                発砲
+                撃つ
             </button>
 
             <button onClick={actions.goToSelection}>選択画面に戻る</button>
