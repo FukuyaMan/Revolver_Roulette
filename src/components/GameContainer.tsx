@@ -35,10 +35,10 @@ const GameContainer = () => {
     const lastTickRotationRef = useRef<number>(0);
 
     // Tuning States
-    // Tuning States
-    const [spinDuration, setSpinDuration] = useState<number | string>(1750);
-    const [startInterval, setStartInterval] = useState<number | string>(20); // ms per tick (approx 10 rot/s)
-    const [endInterval, setEndInterval] = useState<number | string>(300);    // ms per tick (approx 0.5 rot/s)
+    // Tuning States (Fixed Final Values)
+    const [spinDuration] = useState<number>(1750);
+    const [startInterval] = useState<number>(50);  // ms per tick (Start)
+    const [endInterval] = useState<number>(250);   // ms per tick (End)
 
     // Logarithmic Integration (Linear Interval Growth)
     const getLogRotation = (t: number, totalDuration: number, iStart: number, iEnd: number) => {
@@ -297,92 +297,7 @@ const GameContainer = () => {
                 {gunState.isLoaded ? "再装填 / リセット" : "弾を込める"}
             </button>
 
-            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.8 }}>
-                <div style={{ marginBottom: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '4px', textAlign: 'left' }}>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Spin Duration (ms):</label>
-                        <input
-                            type="number"
-                            value={spinDuration}
-                            onChange={(e) => setSpinDuration(e.target.value === '' ? '' : Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Start Interval (ms/tick):</label>
-                        <input
-                            type="number"
-                            value={startInterval}
-                            onChange={(e) => setStartInterval(e.target.value === '' ? '' : Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>End Interval (ms/tick):</label>
-                        <input
-                            type="number"
-                            value={endInterval}
-                            onChange={(e) => setEndInterval(e.target.value === '' ? '' : Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
-                        />
-                    </div>
-                </div>
 
-                <p style={{ fontSize: '0.8rem', margin: 0 }}>Haptics Test (Android Only)</p>
-                <button
-                    onClick={() => {
-                        // Simulate spin with velocity integration
-                        // Simulate spin with velocity integration
-                        playSe('rotate');
-                        const valStartInterval = Number(startInterval) || 20;
-                        const valEndInterval = Number(endInterval) || 300;
-                        const durationVal = Number(spinDuration) || 1600;
-                        const durationSec = durationVal / 1000;
-
-                        let startTime = Date.now();
-                        let lastRot = 0;
-
-                        const interval = setInterval(() => {
-                            const elapsed = Date.now() - startTime;
-                            const t = elapsed / 1000;
-
-                            // Calculate rotation using Logarithmic helper
-                            const currentRot = getLogRotation(t, durationSec, valStartInterval, valEndInterval);
-
-                            if (Math.floor(currentRot / 60) > Math.floor(lastRot / 60)) {
-                                vibrate('tick');
-                            }
-                            lastRot = currentRot;
-
-                            if (elapsed >= (Number(spinDuration) || 0)) {
-                                clearInterval(interval);
-                            }
-                        }, 16);
-                    }}
-                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
-                >
-                    Test: Spin
-                </button>
-                <button
-                    onMouseDown={() => startVibration('heartbeat', 1100)}
-                    onMouseUp={stopVibration}
-                    onMouseLeave={stopVibration}
-                    onTouchStart={() => startVibration('heartbeat', 1100)}
-                    onTouchEnd={(e) => { e.preventDefault(); stopVibration(); }}
-                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
-                >
-                    Test: Heartbeat
-                </button>
-                <button
-                    onClick={() => {
-                        playSe('bang');
-                        vibrate('explosion');
-                    }}
-                    style={{ fontSize: '0.8rem', padding: '0.4em' }}
-                >
-                    Test: Explosion
-                </button>
-            </div>
         </div>
     );
 
