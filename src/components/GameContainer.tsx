@@ -32,6 +32,7 @@ const GameContainer = () => {
     const spinStartTimeRef = useRef<number>(0);
     const spinStartRotationRef = useRef<number>(0);
     const spinTargetRotationRef = useRef<number>(0);
+    const lastTickRotationRef = useRef<number>(0);
     const SPIN_DURATION = 1600; // 1.6 seconds
 
     // Easing: easeOutQuart (Smooth deceleration without bounce)
@@ -94,13 +95,20 @@ const GameContainer = () => {
             const ease = easeOutQuart(progress);
 
             const newRotation = spinStartRotationRef.current + (spinTargetRotationRef.current - spinStartRotationRef.current) * ease;
+
+            // Trigger tick vibration on slot pass (every 60 degrees)
+            if (Math.floor(newRotation / 60) > Math.floor(lastTickRotationRef.current / 60)) {
+                vibrate('tick');
+            }
+            lastTickRotationRef.current = newRotation;
+
             setVisualRotation(newRotation);
 
             if (progress >= 1) {
                 isSpinningRef.current = false;
                 setIsSpinning(false);
                 setVisualRotation(spinTargetRotationRef.current); // Ensure exact snap
-                stopVibration(); // Stop ticking
+                // stopVibration no longer needed for tick as it's one-shot
 
                 setTimeout(() => {
                     actions.loadGun();
@@ -120,7 +128,7 @@ const GameContainer = () => {
         isSpinningRef.current = true;
         setIsSpinning(true);
         playSe('rotate');
-        startVibration('tick', 180); // Tick every 180ms during spin
+        // startVibration('tick', 180); // Removed: angle-based now
 
         spinStartTimeRef.current = Date.now();
         spinStartRotationRef.current = visualRotation;
@@ -261,22 +269,33 @@ const GameContainer = () => {
                 <p style={{ fontSize: '0.8rem', margin: 0 }}>Haptics Test (Android Only)</p>
                 <button
                     onClick={() => {
-                        startVibration('tick', 180);
-                        setTimeout(stopVibration, 1600);
+                        // Simulate spin with angle-based vibration
+                        let rot = 0;
+                        let vel = 40;
+                        const interval = setInterval(() => {
+                            rot += vel;
+                            vel *= 0.98;
+                            if (Math.floor(rot / 60) > Math.floor((rot - vel) / 60)) {
+                                vibrate('tick');
+                            }
+                            if (vel < 2) {
+                                clearInterval(interval);
+                            }
+                        }, 16);
                     }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
                     Test: Spin (1.6s)
                 </button>
                 <button
-                    onMouseDown={() => startVibration('heartbeat', 600)}
+                    onMouseDown={() => startVibration('heartbeat', 857)}
                     onMouseUp={stopVibration}
                     onMouseLeave={stopVibration}
-                    onTouchStart={() => startVibration('heartbeat', 600)}
+                    onTouchStart={() => startVibration('heartbeat', 857)}
                     onTouchEnd={(e) => { e.preventDefault(); stopVibration(); }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
-                    Test: Heartbeat (Hold)
+                    Test: Heartbeat (Wait)
                 </button>
                 <button
                     onClick={() => vibrate('explosion')}
@@ -349,7 +368,7 @@ const GameContainer = () => {
                 onMouseDown={() => {
                     console.log("Hammer cocked...");
                     playSe('hammer');
-                    startVibration('heartbeat', 600);
+                    startVibration('heartbeat', 857); // 70 BPM
                 }}
                 onMouseUp={(e) => {
                     e.preventDefault();
@@ -365,7 +384,7 @@ const GameContainer = () => {
                 onTouchStart={() => {
                     console.log("Hammer cocked (touch)...");
                     playSe('hammer');
-                    startVibration('heartbeat', 600);
+                    startVibration('heartbeat', 857); // 70 BPM
                 }}
                 onTouchEnd={(e) => {
                     e.preventDefault();

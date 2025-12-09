@@ -16,16 +16,29 @@ const sounds: Record<SoundType, string> = {
     retry: retry,
 };
 
-// Preload (optional, browser cache handles mostly)
-Object.values(sounds).forEach(src => {
-    new Audio(src);
+const audioCache: Partial<Record<SoundType, HTMLAudioElement>> = {};
+
+// Preload audio objects
+Object.keys(sounds).forEach(key => {
+    const type = key as SoundType;
+    const audio = new Audio(sounds[type]);
+    audio.load(); // Force browser to load metadata/buffer
+    audioCache[type] = audio;
 });
 
 export const playSe = (type: SoundType) => {
     try {
-        const audio = new Audio(sounds[type]);
-        audio.play().catch(e => console.error("Audio play failed", e));
+        const baseAudio = audioCache[type];
+        if (baseAudio) {
+            // Clone the node to allow overlapping sounds (rapid fire)
+            // and to ensure low latency (skips network/disk fetch)
+            const audio = baseAudio.cloneNode() as HTMLAudioElement;
+            audio.play().catch(e => console.error("Audio play failed", e));
+        } else {
+            // Fallback
+            new Audio(sounds[type]).play().catch(e => console.error("Audio play fallback failed", e));
+        }
     } catch (e) {
-        console.error("Audio init failed", e);
+        console.error("Audio play error", e);
     }
 };

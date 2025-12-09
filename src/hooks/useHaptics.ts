@@ -14,17 +14,17 @@ export const useHaptics = () => {
 
         switch (pattern) {
             case 'tick':
-                navigator.vibrate(15);
+                navigator.vibrate(12); // Shorter, sharper tick
                 break;
             case 'impact':
                 navigator.vibrate(40);
                 break;
             case 'explosion':
-                navigator.vibrate([200, 100, 200]);
+                navigator.vibrate(500); // Single long vibration
                 break;
             case 'heartbeat':
-                // Single heartbeat pulse
-                navigator.vibrate([50, 100, 50]);
+                // Single heartbeat pulse (70 BPM = ~857ms interval, pulse length ~100ms)
+                navigator.vibrate(100);
                 break;
         }
     }, []);
