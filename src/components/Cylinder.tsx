@@ -5,9 +5,17 @@ interface CylinderProps {
     currentChamberIndex: number;
     gameState: GameState;
     additionalRotation?: number;
+    isSpinning?: boolean;
+    isDragging?: boolean;
 }
 
-const Cylinder = ({ currentChamberIndex, gameState, additionalRotation = 0 }: CylinderProps) => {
+const Cylinder = ({
+    currentChamberIndex,
+    gameState,
+    additionalRotation = 0,
+    isSpinning = false,
+    isDragging = false
+}: CylinderProps) => {
     // Determine the rotation angle to place the current chamber at the top
     // Assuming chamber 0 is at top (12 o'clock) initially
     // Each step is 360 / 6 = 60 degrees
@@ -16,13 +24,17 @@ const Cylinder = ({ currentChamberIndex, gameState, additionalRotation = 0 }: Cy
     const baseRotation = -currentChamberIndex * 60;
     const rotation = baseRotation + additionalRotation;
 
+    const shouldDisableTransition = isSpinning || isDragging;
+
     return (
         <div className="cylinder-wrapper">
             <div
                 className="cylinder-container"
                 style={{
                     transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // Spring-like ease
+                    transition: shouldDisableTransition
+                        ? 'none'
+                        : 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // Spring-like ease when settling
                 }}
             >
                 {[...Array(6)].map((_, i) => {
@@ -71,18 +83,7 @@ const Cylinder = ({ currentChamberIndex, gameState, additionalRotation = 0 }: Cy
                     );
                 })}
             </div>
-            {/* Visual Indicator for "Current" (Right position 3 o'clock) */}
-            <div style={{
-                position: 'absolute',
-                top: '50%',
-                right: '-25px',
-                transform: 'translateY(-50%) rotate(90deg)',
-                fontSize: '2rem',
-                color: 'red',
-                zIndex: 10
-            }}>
-                ⬇
-            </div>
+
         </div>
     );
 };

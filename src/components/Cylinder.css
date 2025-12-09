@@ -1,8 +1,8 @@
 /* Cylinder Visualization */
 :root {
-    --cylinder-size: 300px;
-    --chamber-size: 75px;
-    --cylinder-radius: 95px;
+    --cylinder-size: 360px;
+    --chamber-size: 108px;
+    --cylinder-radius: 114px;
 }
 
 .cylinder-wrapper {
@@ -33,7 +33,7 @@
     width: var(--chamber-size);
     height: var(--chamber-size);
     border-radius: 50%;
-    background-color: #1a1a1a;
+    background-color: #333;
     border: 2px solid #555;
     display: flex;
     justify-content: center;
@@ -70,11 +70,11 @@
 /* Mobile Responsiveness */
 @media (max-width: 600px) {
     :root {
-        --cylinder-size: 200px;
+        --cylinder-size: 240px;
         /* Smaller container */
-        --chamber-size: 50px;
+        --chamber-size: 72px;
         /* Smaller chambers */
-        --cylinder-radius: 55px;
+        --cylinder-radius: 78px;
         /* Tighter radius */
     }
 }

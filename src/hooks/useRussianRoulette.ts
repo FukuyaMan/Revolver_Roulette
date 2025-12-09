@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export const GAME_STATES = {
     SELECTION: 'SELECTION',
@@ -13,7 +13,7 @@ export const FEEDBACK = {
     NONE: '',
     LOADED: '装填完了。',
     SAFE: 'カチッ... (不発)',
-    BANG: 'BANG! (Game Over)',
+    BANG: '',
 } as const;
 
 export type Feedback = typeof FEEDBACK[keyof typeof FEEDBACK];
@@ -38,14 +38,38 @@ export interface UseRussianRouletteReturn {
     };
 }
 
+const STORAGE_KEY = 'russian_roulette_state';
+
 export function useRussianRoulette(): UseRussianRouletteReturn {
-    const [gameState, setGameState] = useState<GameState>(GAME_STATES.SELECTION);
-    const [gunState, setGunState] = useState<GunState>({
+    // Load initial state from storage
+    const getInitialState = () => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to load game state:', e);
+        }
+        return null;
+    };
+
+    const savedState = getInitialState();
+
+    const [gameState, setGameState] = useState<GameState>(savedState?.gameState || GAME_STATES.SELECTION);
+    const [gunState, setGunState] = useState<GunState>(savedState?.gunState || {
         liveRoundIndex: -1,
         chamberIndex: 0,
         isLoaded: false,
     });
-    const [feedback, setFeedback] = useState<Feedback>(FEEDBACK.NONE);
+    const [feedback, setFeedback] = useState<Feedback>(savedState?.feedback || FEEDBACK.NONE);
+
+    // Save state changes
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            gameState,
+            gunState,
+            feedback
+        }));
+    }, [gameState, gunState, feedback]);
 
     const goToLoading = () => {
         setGameState(GAME_STATES.LOADING);

@@ -1,16 +1,21 @@
 import { useState, useRef, useEffect, MouseEvent, TouchEvent } from 'react';
 import { useRussianRoulette, GAME_STATES } from '../hooks/useRussianRoulette';
+import { playSe } from '../utils/soundUtils';
 import Cylinder from './Cylinder';
 import './GameContainer.css';
 
 const GameContainer = () => {
-    const { gameState, gunState, feedback, actions } = useRussianRoulette();
+    const { gameState, gunState, actions } = useRussianRoulette();
 
     // Local state for Loading Phase UI
     const [loadingStep, setLoadingStep] = useState<'confirm' | 'swipe'>('confirm');
     const progressRef = useRef<number>(0); // Ref instead of state since visual is removed
     const [visualRotation, setVisualRotation] = useState<number>(0);
     const [, setIsShakeSupported] = useState<boolean>(false);
+
+    // UI states to control animation smoothness
+    const [isSpinning, setIsSpinning] = useState<boolean>(false);
+    const [isDraggingState, setIsDraggingState] = useState<boolean>(false);
 
     // Animation refs
     const isDragging = useRef<boolean>(false);
@@ -20,6 +25,17 @@ const GameContainer = () => {
     const animationFrameRef = useRef<number | null>(null);
     const velocityRef = useRef<number>(0);
     const isSpinningRef = useRef<boolean>(false);
+
+    // Requests for time-based animation
+    const spinStartTimeRef = useRef<number>(0);
+    const spinStartRotationRef = useRef<number>(0);
+    const spinTargetRotationRef = useRef<number>(0);
+    const SPIN_DURATION = 1600; // 1.6 seconds
+
+    // Easing: easeOutQuart (Smooth deceleration without bounce)
+    const easeOutQuart = (x: number): number => {
+        return 1 - Math.pow(1 - x, 4);
+    };
 
     // Request permission for iOS 13+
     const requestMotionPermission = async () => {
@@ -70,18 +86,26 @@ const GameContainer = () => {
 
     const updateSpin = () => {
         if (isSpinningRef.current) {
-            setVisualRotation(prev => prev + velocityRef.current);
-            velocityRef.current *= 0.98;
+            const elapsed = Date.now() - spinStartTimeRef.current;
+            const progress = Math.min(elapsed / SPIN_DURATION, 1);
+            const ease = easeOutQuart(progress);
 
-            if (velocityRef.current < 0.5) {
+            const newRotation = spinStartRotationRef.current + (spinTargetRotationRef.current - spinStartRotationRef.current) * ease;
+            setVisualRotation(newRotation);
+
+            if (progress >= 1) {
                 isSpinningRef.current = false;
+                setIsSpinning(false);
+                setVisualRotation(spinTargetRotationRef.current); // Ensure exact snap
+
                 setTimeout(() => {
                     actions.loadGun();
-                }, 500);
+                }, 1000);
             } else {
                 animationFrameRef.current = requestAnimationFrame(updateSpin);
             }
         } else if (Math.abs(velocityRef.current) > 0.1 && !isDragging.current) {
+            // Keep legacy decay for non-spin flicks (small movements)
             setVisualRotation(prev => prev + velocityRef.current);
             velocityRef.current *= 0.95;
             animationFrameRef.current = requestAnimationFrame(updateSpin);
@@ -90,9 +114,16 @@ const GameContainer = () => {
 
     const startAutoSpin = () => {
         isSpinningRef.current = true;
-        // Use current velocity if it's a fast flick, otherwise ensure minimum spin speed
-        const baseSpeed = 30;
-        velocityRef.current = Math.max(Math.abs(velocityRef.current), baseSpeed) + Math.random() * 10;
+        setIsSpinning(true);
+        playSe('rotate');
+
+        spinStartTimeRef.current = Date.now();
+        spinStartRotationRef.current = visualRotation;
+
+        // Target: Current + 5 full rotations (1800) + snap
+        const minSpin = 1800;
+        const rawTarget = visualRotation + minSpin;
+        spinTargetRotationRef.current = Math.round(rawTarget / 60) * 60;
 
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = requestAnimationFrame(updateSpin);
@@ -101,6 +132,7 @@ const GameContainer = () => {
     const handleMouseDown = () => {
         if (loadingStep === 'swipe' && !isSpinningRef.current) {
             isDragging.current = true;
+            setIsDraggingState(true);
             velocityRef.current = 0; // Reset velocity on grab
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         }
@@ -108,6 +140,7 @@ const GameContainer = () => {
 
     const handleMouseUp = () => {
         isDragging.current = false;
+        setIsDraggingState(false);
 
         const timeSinceLastMove = Date.now() - lastMoveTime.current;
         const isFlick = timeSinceLastMove < 100 && Math.abs(velocityRef.current) > 5;
@@ -121,6 +154,7 @@ const GameContainer = () => {
 
     const handleMouseLeave = () => {
         isDragging.current = false;
+        setIsDraggingState(false);
         if (!isSpinningRef.current) {
             animationFrameRef.current = requestAnimationFrame(updateSpin);
         }
@@ -149,6 +183,7 @@ const GameContainer = () => {
     const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
         if (loadingStep === 'swipe' && !isSpinningRef.current) {
             isDragging.current = true;
+            setIsDraggingState(true);
             velocityRef.current = 0;
             const touch = e.touches[0];
             lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
@@ -181,6 +216,7 @@ const GameContainer = () => {
 
     const handleTouchEnd = () => {
         isDragging.current = false;
+        setIsDraggingState(false);
         lastTouchPos.current = null;
 
         const timeSinceLastMove = Date.now() - lastMoveTime.current;
@@ -194,13 +230,9 @@ const GameContainer = () => {
     };
 
     // Selection Phase Render
+    // Selection Phase Render
     const renderSelection = () => (
         <div className="phase-container">
-            <h2>選択フェーズ</h2>
-            <div className="status-display">
-                状態: {gunState.isLoaded ? "装填済み" : "未装填"}
-            </div>
-
             {gunState.isLoaded && (
                 <button
                     onClick={actions.goToFiring}
@@ -225,7 +257,6 @@ const GameContainer = () => {
     // Loading Phase Render
     const renderLoading = () => (
         <div className="phase-container">
-            <h2>装填フェーズ</h2>
             {loadingStep === 'confirm' ? (
                 <>
                     <p>
@@ -235,9 +266,10 @@ const GameContainer = () => {
                     </p>
                     <button onClick={() => {
                         requestMotionPermission();
+                        playSe('load');
                         setLoadingStep('swipe');
                     }}>装填</button>
-                    <button onClick={actions.goToSelection} className="text-btn">キャンセル</button>
+                    <button onClick={actions.goToSelection} className="text-btn">戻る</button>
                 </>
             ) : (
                 <div className="swipe-container">
@@ -260,34 +292,54 @@ const GameContainer = () => {
                             currentChamberIndex={0}
                             gameState={gameState}
                             additionalRotation={visualRotation}
+                            isSpinning={isSpinning}
+                            isDragging={isDraggingState}
                         />
-
-
                     </div>
-
                 </div>
             )}
         </div>
     );
 
-
     // Firing Phase Render
     const renderFiring = () => (
         <div className="phase-container">
-            <h2>発砲フェーズ</h2>
-
             <Cylinder currentChamberIndex={gunState.chamberIndex} gameState={gameState} />
 
             <div className="status-display">
-                シリンダー位置: {gunState.chamberIndex + 1} / 6
+                実弾確率: {((1 / (6 - gunState.chamberIndex)) * 100).toFixed(1)}%
             </div>
 
             <button
                 className="fire-btn"
-                onMouseDown={() => console.log("Hammer cocked...")}
-                onMouseUp={actions.fire}
+                onMouseDown={() => {
+                    console.log("Hammer cocked...");
+                    playSe('hammer');
+                }}
+                onMouseUp={(e) => {
+                    e.preventDefault();
+                    if (gunState.chamberIndex === gunState.liveRoundIndex) {
+                        playSe('bang');
+                    } else {
+                        playSe('empty');
+                    }
+                    actions.fire();
+                }}
+                onTouchStart={() => {
+                    console.log("Hammer cocked (touch)...");
+                    playSe('hammer');
+                }}
+                onTouchEnd={(e) => {
+                    e.preventDefault();
+                    if (gunState.chamberIndex === gunState.liveRoundIndex) {
+                        playSe('bang');
+                    } else {
+                        playSe('empty');
+                    }
+                    actions.fire();
+                }}
             >
-                発砲 (FIRE)
+                発砲
             </button>
 
             <button onClick={actions.goToSelection}>選択画面に戻る</button>
@@ -297,19 +349,18 @@ const GameContainer = () => {
     // Game Over Render
     const renderGameOver = () => (
         <div className="phase-container">
-            <h2 style={{ color: 'red' }}>ゲームオーバー</h2>
-
             <Cylinder currentChamberIndex={gunState.chamberIndex} gameState={gameState} />
 
-            <p style={{ fontSize: '2rem' }}>バーン！</p>
-            <button onClick={actions.resetGame}>リトライ</button>
+            <p style={{ fontSize: '2rem' }}>BANG!</p>
+            <button onClick={() => {
+                playSe('retry');
+                actions.resetGame();
+            }}>Retry</button>
         </div>
     );
 
     return (
         <div className="game-container">
-            <div className="feedback">{feedback}</div>
-
             {gameState === GAME_STATES.SELECTION && renderSelection()}
             {gameState === GAME_STATES.LOADING && renderLoading()}
             {gameState === GAME_STATES.FIRING && renderFiring()}
