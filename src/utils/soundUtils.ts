@@ -16,29 +16,61 @@ const sounds: Record<SoundType, string> = {
     retry: retry,
 };
 
-const audioCache: Partial<Record<SoundType, HTMLAudioElement>> = {};
+// Web Audio API Context
+let audioContext: AudioContext | null = null;
+const audioBuffers: Partial<Record<SoundType, AudioBuffer>> = {};
 
-// Preload audio objects
-Object.keys(sounds).forEach(key => {
-    const type = key as SoundType;
-    const audio = new Audio(sounds[type]);
-    audio.load(); // Force browser to load metadata/buffer
-    audioCache[type] = audio;
+const getAudioContext = () => {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContext;
+};
+
+// Load and decode audio buffer
+const loadBuffer = async (type: SoundType, url: string) => {
+    try {
+        const ctx = getAudioContext();
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+        audioBuffers[type] = decodedBuffer;
+    } catch (e) {
+        console.error(`Failed to load sound: ${type}`, e);
+    }
+};
+
+// Initialize/Preload all sounds
+export const initAudio = () => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+        ctx.resume();
+    }
+
+    // Trigger loads if empty
+    if (Object.keys(audioBuffers).length === 0) {
+        Object.keys(sounds).forEach((key) => {
+            loadBuffer(key as SoundType, sounds[key as SoundType]);
+        });
+    }
+};
+
+// Auto-init on import (starts fetching, but context might arguably need user interaction to resume)
+Object.keys(sounds).forEach((key) => {
+    loadBuffer(key as SoundType, sounds[key as SoundType]);
 });
 
 export const playSe = (type: SoundType) => {
-    try {
-        const baseAudio = audioCache[type];
-        if (baseAudio) {
-            // Clone the node to allow overlapping sounds (rapid fire)
-            // and to ensure low latency (skips network/disk fetch)
-            const audio = baseAudio.cloneNode() as HTMLAudioElement;
-            audio.play().catch(e => console.error("Audio play failed", e));
-        } else {
-            // Fallback
-            new Audio(sounds[type]).play().catch(e => console.error("Audio play fallback failed", e));
-        }
-    } catch (e) {
-        console.error("Audio play error", e);
+    const ctx = getAudioContext();
+    const buffer = audioBuffers[type];
+
+    if (buffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+    } else {
+        // Fallback or retry load
+        console.warn(`Sound ${type} not loaded yet.`);
     }
 };

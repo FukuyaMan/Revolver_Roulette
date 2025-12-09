@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, MouseEvent, TouchEvent } from 'react';
 import { useRussianRoulette, GAME_STATES } from '../hooks/useRussianRoulette';
-import { playSe } from '../utils/soundUtils';
+import { playSe, initAudio } from '../utils/soundUtils';
 import { useHaptics } from '../hooks/useHaptics';
 import Cylinder from './Cylinder';
 import './GameContainer.css';
@@ -31,13 +31,13 @@ const GameContainer = () => {
     // Requests for time-based animation
     const spinStartTimeRef = useRef<number>(0);
     const spinStartRotationRef = useRef<number>(0);
-    const spinTargetRotationRef = useRef<number>(0);
+    // const spinTargetRotationRef = useRef<number>(0); // Unused in velocity mode
     const lastTickRotationRef = useRef<number>(0);
 
     // Tuning States
-    const [spinDuration, setSpinDuration] = useState<number>(1600);
-    const [startSpeed, setStartSpeed] = useState<number>(5.0); // Rotations per second
-    const [endSpeed, setEndSpeed] = useState<number>(0.1); // Rotations per second
+    const [spinDuration, setSpinDuration] = useState<number | string>(1600);
+    const [startSpeed, setStartSpeed] = useState<number | string>(5.0); // Rotations per second
+    const [endSpeed, setEndSpeed] = useState<number | string>(0.1); // Rotations per second
 
     // Velocity Integration
     const getRotationAtTime = (t: number, totalDuration: number, vStart: number, vEnd: number) => {
@@ -100,13 +100,18 @@ const GameContainer = () => {
     const updateSpin = () => {
         if (isSpinningRef.current) {
             const elapsed = Date.now() - spinStartTimeRef.current;
-            const progress = Math.min(elapsed / spinDuration, 1);
+            const durationVal = Number(spinDuration) || 1600;
+            const progress = Math.min(elapsed / durationVal, 1);
 
             // Calculate time in seconds for physics formula
             const t = elapsed / 1000;
-            const durationSec = spinDuration / 1000;
+            // durationVal already declared above
+            const durationSec = durationVal / 1000;
 
-            const deltaRotation = getRotationAtTime(t, durationSec, startSpeed, endSpeed);
+            const vStart = Number(startSpeed); // Default is handled by state init usually, but safe cast
+            const vEnd = Number(endSpeed);
+
+            const deltaRotation = getRotationAtTime(t, durationSec, vStart, vEnd);
             const newRotation = spinStartRotationRef.current + deltaRotation;
 
             // Trigger tick vibration on slot pass (every 60 degrees)
@@ -122,7 +127,9 @@ const GameContainer = () => {
                 setIsSpinning(false);
 
                 // Final snap calculation based on integration result
-                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, startSpeed, endSpeed);
+                const durationVal = Number(spinDuration) || 1600;
+                const durationSec = durationVal / 1000;
+                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, Number(startSpeed), Number(endSpeed));
                 const snappedRot = Math.round(finalRot / 60) * 60;
                 setVisualRotation(snappedRot);
 
@@ -266,6 +273,7 @@ const GameContainer = () => {
             )}
 
             <button onClick={() => {
+                initAudio(); // Unlock audio context
                 setLoadingStep('confirm');
                 progressRef.current = 0;
                 setVisualRotation(0);
@@ -282,8 +290,8 @@ const GameContainer = () => {
                         <input
                             type="number"
                             value={spinDuration}
-                            onChange={(e) => setSpinDuration(Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                            onChange={(e) => setSpinDuration(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
 
@@ -293,8 +301,8 @@ const GameContainer = () => {
                             type="number"
                             step="0.1"
                             value={startSpeed}
-                            onChange={(e) => setStartSpeed(Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                            onChange={(e) => setStartSpeed(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
 
@@ -304,8 +312,8 @@ const GameContainer = () => {
                             type="number"
                             step="0.1"
                             value={endSpeed}
-                            onChange={(e) => setEndSpeed(Number(e.target.value))}
-                            style={{ width: '100%', padding: '4px', color: 'black' }}
+                            onChange={(e) => setEndSpeed(e.target.value === '' ? '' : Number(e.target.value))}
+                            style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
                 </div>
@@ -314,10 +322,12 @@ const GameContainer = () => {
                 <button
                     onClick={() => {
                         // Simulate spin with velocity integration
+                        // Simulate spin with velocity integration
                         playSe('rotate');
-                        const vStart = startSpeed;
-                        const vEnd = endSpeed;
-                        const durationSec = spinDuration / 1000;
+                        const vStart = Number(startSpeed);
+                        const vEnd = Number(endSpeed);
+                        const durationVal = Number(spinDuration) || 1600;
+                        const durationSec = durationVal / 1000;
 
                         let startTime = Date.now();
                         let lastRot = 0;
@@ -336,7 +346,7 @@ const GameContainer = () => {
                             }
                             lastRot = currentRot;
 
-                            if (elapsed >= spinDuration) {
+                            if (elapsed >= (Number(spinDuration) || 0)) {
                                 clearInterval(interval);
                             }
                         }, 16);

@@ -23,8 +23,8 @@ export const useHaptics = () => {
                 navigator.vibrate(2000); // 2 second long vibration
                 break;
             case 'heartbeat':
-                // Double heartbeat pulse "dok-dok" (50ms vib, 50ms pause, 50ms vib)
-                navigator.vibrate([50, 50, 50]);
+                // Double heartbeat pulse "dok-dok" (50ms vib, 150ms pause, 50ms vib)
+                navigator.vibrate([50, 150, 50]);
                 break;
         }
     }, []);
