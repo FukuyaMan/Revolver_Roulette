@@ -20,7 +20,7 @@ export const useHaptics = () => {
                 navigator.vibrate(40);
                 break;
             case 'explosion':
-                navigator.vibrate(options?.explosionDuration ?? 2000);
+                navigator.vibrate(options?.explosionDuration ?? 1000);
                 break;
             case 'heartbeat':
                 // Double heartbeat pulse "dok-dok" (50ms vib, GAP, 50ms vib)

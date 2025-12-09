@@ -35,14 +35,10 @@ const GameContainer = () => {
     const lastTickRotationRef = useRef<number>(0);
 
     // Tuning States
-    const [spinDuration] = useState<number>(1750); // Fixed optimal
-    const [startSpeed] = useState<number>(10.0);   // Fixed optimal
-    const [endSpeed] = useState<number>(0.5);      // Fixed optimal
-
-    // Heartbeat & Explosion Tuning
-    const [heartbeatInterval, setHeartbeatInterval] = useState<number | string>(857); // BPM control
-    const [heartbeatGap, setHeartbeatGap] = useState<number | string>(150); // Gap between pulses
-    const [explosionDuration, setExplosionDuration] = useState<number | string>(2000);
+    // Tuning States
+    const [spinDuration, setSpinDuration] = useState<number | string>(1750);
+    const [startInterval, setStartInterval] = useState<number | string>(20); // ms per tick (approx 10 rot/s)
+    const [endInterval, setEndInterval] = useState<number | string>(300);    // ms per tick (approx 0.5 rot/s)
 
     // Velocity Integration
     const getRotationAtTime = (t: number, totalDuration: number, vStart: number, vEnd: number) => {
@@ -113,8 +109,15 @@ const GameContainer = () => {
             // durationVal already declared above
             const durationSec = durationVal / 1000;
 
-            const vStart = Number(startSpeed); // Default is handled by state init usually, but safe cast
-            const vEnd = Number(endSpeed);
+            // Convert Interval (ms/tick) to Speed (rot/sec)
+            // Interval is time per 1/6th rotation.
+            // Speed = (1 rot / 6 ticks) / (Interval ms / 1000 s/ms)
+            // Speed = (1/6) * (1000 / Interval)
+            const valStartInterval = Number(startInterval) || 20;
+            const valEndInterval = Number(endInterval) || 300;
+
+            const vStart = (1 / 6) * (1000 / valStartInterval);
+            const vEnd = (1 / 6) * (1000 / valEndInterval);
 
             const deltaRotation = getRotationAtTime(t, durationSec, vStart, vEnd);
             const newRotation = spinStartRotationRef.current + deltaRotation;
@@ -134,7 +137,12 @@ const GameContainer = () => {
                 // Final snap calculation based on integration result
                 const durationVal = Number(spinDuration) || 1600;
                 const durationSec = durationVal / 1000;
-                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, Number(startSpeed), Number(endSpeed));
+                const valStartInterval = Number(startInterval) || 20;
+                const valEndInterval = Number(endInterval) || 300;
+                const vStart = (1 / 6) * (1000 / valStartInterval);
+                const vEnd = (1 / 6) * (1000 / valEndInterval);
+
+                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, vStart, vEnd);
                 const snappedRot = Math.round(finalRot / 60) * 60;
                 setVisualRotation(snappedRot);
 
@@ -291,31 +299,29 @@ const GameContainer = () => {
             <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.8 }}>
                 <div style={{ marginBottom: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '4px', textAlign: 'left' }}>
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Heartbeat Interval (ms):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Spin Duration (ms):</label>
                         <input
                             type="number"
-                            value={heartbeatInterval}
-                            onChange={(e) => setHeartbeatInterval(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={spinDuration}
+                            onChange={(e) => setSpinDuration(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
-
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Heartbeat Interval Gap (ms):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Start Interval (ms/tick):</label>
                         <input
                             type="number"
-                            value={heartbeatGap}
-                            onChange={(e) => setHeartbeatGap(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={startInterval}
+                            onChange={(e) => setStartInterval(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
-
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.8rem', display: 'block' }}>Explosion Duration (ms):</label>
+                        <label style={{ fontSize: '0.8rem', display: 'block' }}>End Interval (ms/tick):</label>
                         <input
                             type="number"
-                            value={explosionDuration}
-                            onChange={(e) => setExplosionDuration(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={endInterval}
+                            onChange={(e) => setEndInterval(e.target.value === '' ? '' : Number(e.target.value))}
                             style={{ width: '100%', padding: '4px', color: 'black', backgroundColor: 'white' }}
                         />
                     </div>
@@ -327,8 +333,10 @@ const GameContainer = () => {
                         // Simulate spin with velocity integration
                         // Simulate spin with velocity integration
                         playSe('rotate');
-                        const vStart = Number(startSpeed);
-                        const vEnd = Number(endSpeed);
+                        const valStartInterval = Number(startInterval) || 20;
+                        const valEndInterval = Number(endInterval) || 300;
+                        const vStart = (1 / 6) * (1000 / valStartInterval);
+                        const vEnd = (1 / 6) * (1000 / valEndInterval);
                         const durationVal = Number(spinDuration) || 1600;
                         const durationSec = durationVal / 1000;
 
@@ -359,10 +367,10 @@ const GameContainer = () => {
                     Test: Spin
                 </button>
                 <button
-                    onMouseDown={() => startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 })}
+                    onMouseDown={() => startVibration('heartbeat', 1100)}
                     onMouseUp={stopVibration}
                     onMouseLeave={stopVibration}
-                    onTouchStart={() => startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 })}
+                    onTouchStart={() => startVibration('heartbeat', 1100)}
                     onTouchEnd={(e) => { e.preventDefault(); stopVibration(); }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
@@ -371,7 +379,7 @@ const GameContainer = () => {
                 <button
                     onClick={() => {
                         playSe('bang');
-                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
+                        vibrate('explosion');
                     }}
                     style={{ fontSize: '0.8rem', padding: '0.4em' }}
                 >
@@ -442,14 +450,14 @@ const GameContainer = () => {
                 onMouseDown={() => {
                     console.log("Hammer cocked...");
                     playSe('hammer');
-                    startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 });
+                    startVibration('heartbeat', 1100);
                 }}
                 onMouseUp={(e) => {
                     e.preventDefault();
                     stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
-                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
+                        vibrate('explosion');
                     } else {
                         playSe('empty');
                     }
@@ -458,14 +466,14 @@ const GameContainer = () => {
                 onTouchStart={() => {
                     console.log("Hammer cocked (touch)...");
                     playSe('hammer');
-                    startVibration('heartbeat', Number(heartbeatInterval) || 857, { heartbeatGap: Number(heartbeatGap) || 150 });
+                    startVibration('heartbeat', 1100);
                 }}
                 onTouchEnd={(e) => {
                     e.preventDefault();
                     stopVibration();
                     if (gunState.chamberIndex === gunState.liveRoundIndex) {
                         playSe('bang');
-                        vibrate('explosion', { explosionDuration: Number(explosionDuration) || 2000 });
+                        vibrate('explosion');
                     } else {
                         playSe('empty');
                     }
