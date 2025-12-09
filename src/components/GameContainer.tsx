@@ -40,14 +40,24 @@ const GameContainer = () => {
     const [startInterval, setStartInterval] = useState<number | string>(20); // ms per tick (approx 10 rot/s)
     const [endInterval, setEndInterval] = useState<number | string>(300);    // ms per tick (approx 0.5 rot/s)
 
-    // Velocity Integration
-    const getRotationAtTime = (t: number, totalDuration: number, vStart: number, vEnd: number) => {
-        // v(t) = vStart + (vEnd - vStart) * (t / duration)
-        // rot(t) = ∫ v(t) dt = vStart * t + 0.5 * (vEnd - vStart) * (t^2 / duration)
-        // Note: units are rotations, so multiply by 360 for degrees
-        const term1 = vStart * t;
-        const term2 = 0.5 * (vEnd - vStart) * (Math.pow(t, 2) / totalDuration);
-        return (term1 + term2) * 360;
+    // Logarithmic Integration (Linear Interval Growth)
+    const getLogRotation = (t: number, totalDuration: number, iStart: number, iEnd: number) => {
+        // iStart, iEnd in ms/tick. t, totalDuration in seconds.
+        // We work in ms for easier math with intervals.
+        const t_ms = t * 1000;
+        const d_ms = totalDuration * 1000;
+
+        if (Math.abs(iEnd - iStart) < 0.1) {
+            // Constant speed
+            const speed_rot_per_ms = (1 / 6) / iStart;
+            return speed_rot_per_ms * t_ms * 360;
+        }
+
+        // Formula: Rot = (60 * D / (E - S)) * ln(1 + (E-S)/S * t/D)
+        const factor = (60 * d_ms) / (iEnd - iStart);
+        const logTerm = Math.log(1 + ((iEnd - iStart) / iStart) * (t_ms / d_ms));
+
+        return factor * logTerm;
     };
 
     // Request permission for iOS 13+
@@ -109,17 +119,10 @@ const GameContainer = () => {
             // durationVal already declared above
             const durationSec = durationVal / 1000;
 
-            // Convert Interval (ms/tick) to Speed (rot/sec)
-            // Interval is time per 1/6th rotation.
-            // Speed = (1 rot / 6 ticks) / (Interval ms / 1000 s/ms)
-            // Speed = (1/6) * (1000 / Interval)
             const valStartInterval = Number(startInterval) || 20;
             const valEndInterval = Number(endInterval) || 300;
 
-            const vStart = (1 / 6) * (1000 / valStartInterval);
-            const vEnd = (1 / 6) * (1000 / valEndInterval);
-
-            const deltaRotation = getRotationAtTime(t, durationSec, vStart, vEnd);
+            const deltaRotation = getLogRotation(t, durationSec, valStartInterval, valEndInterval);
             const newRotation = spinStartRotationRef.current + deltaRotation;
 
             // Trigger tick vibration on slot pass (every 60 degrees)
@@ -139,10 +142,8 @@ const GameContainer = () => {
                 const durationSec = durationVal / 1000;
                 const valStartInterval = Number(startInterval) || 20;
                 const valEndInterval = Number(endInterval) || 300;
-                const vStart = (1 / 6) * (1000 / valStartInterval);
-                const vEnd = (1 / 6) * (1000 / valEndInterval);
 
-                const finalRot = spinStartRotationRef.current + getRotationAtTime(durationSec, durationSec, vStart, vEnd);
+                const finalRot = spinStartRotationRef.current + getLogRotation(durationSec, durationSec, valStartInterval, valEndInterval);
                 const snappedRot = Math.round(finalRot / 60) * 60;
                 setVisualRotation(snappedRot);
 
@@ -335,8 +336,6 @@ const GameContainer = () => {
                         playSe('rotate');
                         const valStartInterval = Number(startInterval) || 20;
                         const valEndInterval = Number(endInterval) || 300;
-                        const vStart = (1 / 6) * (1000 / valStartInterval);
-                        const vEnd = (1 / 6) * (1000 / valEndInterval);
                         const durationVal = Number(spinDuration) || 1600;
                         const durationSec = durationVal / 1000;
 
@@ -347,10 +346,8 @@ const GameContainer = () => {
                             const elapsed = Date.now() - startTime;
                             const t = elapsed / 1000;
 
-                            // Calculate rotation using integration helper logic
-                            const term1 = vStart * t;
-                            const term2 = 0.5 * (vEnd - vStart) * (Math.pow(t, 2) / durationSec);
-                            const currentRot = (term1 + term2) * 360;
+                            // Calculate rotation using Logarithmic helper
+                            const currentRot = getLogRotation(t, durationSec, valStartInterval, valEndInterval);
 
                             if (Math.floor(currentRot / 60) > Math.floor(lastRot / 60)) {
                                 vibrate('tick');
